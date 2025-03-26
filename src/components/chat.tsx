@@ -54,8 +54,28 @@ const formatMessageContent = (content: string) => {
   return (
     <>
       {lines.map((line, lineIndex) => {
-        // Handle bullet points and indentation
-        const bulletPointMatch = line.match(/^(\s*)([*•-])\s+(.*)/);
+        // Handle any line that starts with an asterisk as a bullet point
+        if (line.trim().startsWith('*')) {
+          // Extract any text that follows the asterisk
+          const textAfterBullet = line.trim().substring(1).trim();
+          const indentLevel = line.indexOf('*');
+          
+          // Process bold text in the remainder of the line
+          const formattedText = processBoldText(textAfterBullet);
+          
+          return (
+            <div 
+              key={lineIndex} 
+              className="flex" 
+              style={{ marginLeft: `${indentLevel * 8}px`, marginTop: indentLevel === 0 ? '8px' : '4px' }}
+            >
+              <span className="mr-2">•</span>
+              <div>{formattedText}</div>
+            </div>
+          );
+        }
+        // Handle other bullet points (•, -) and indentation
+        const bulletPointMatch = line.match(/^(\s*)([•-])\s+(.*)/);
         
         if (bulletPointMatch) {
           const [, indent, bullet, text] = bulletPointMatch;
@@ -70,7 +90,7 @@ const formatMessageContent = (content: string) => {
               className="flex" 
               style={{ marginLeft: `${indentLevel * 8}px`, marginTop: indentLevel === 0 ? '8px' : '4px' }}
             >
-              <span className="mr-2">{bullet}</span>
+              <span className="mr-2">•</span>
               <div>{formattedText}</div>
             </div>
           );
@@ -144,7 +164,7 @@ export function Chat() {
       const baseUrl = `${window.location.protocol}//${window.location.hostname}:8000`;
       
       // Make request to backend to get the document page as an image
-      const response = await fetch(`${baseUrl}/document-page`, {
+      const response = await fetch(`${baseUrl}/api/document-page`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -289,31 +309,33 @@ export function Chat() {
 
       {/* Header with folder selection and logout */}
       <div className="border-b px-4 py-2 flex justify-between items-center">
-        <select
-          value={selectedFolder}
-          onChange={(e) => setSelectedFolder(e.target.value as typeof FOLDERS[number])}
-          className="rounded-md border-gray-300 py-2 pl-3 pr-10 text-sm focus:border-[#e7298a] focus:outline-none focus:ring-[#e7298a]"
-        >
-          {FOLDERS.map((folder) => (
-            <option key={folder} value={folder}>
-              {folder}
-            </option>
-          ))}
-        </select>
-        <Button variant="outline" onClick={handleLogout} size="sm">
-          Logout
-        </Button>
+        <div className="max-w-6xl mx-auto w-full flex justify-between items-center">
+          <select
+            value={selectedFolder}
+            onChange={(e) => setSelectedFolder(e.target.value as typeof FOLDERS[number])}
+            className="rounded-md border-gray-300 py-2 pl-3 pr-10 text-sm focus:border-[#e7298a] focus:outline-none focus:ring-[#e7298a]"
+          >
+            {FOLDERS.map((folder) => (
+              <option key={folder} value={folder}>
+                {folder}
+              </option>
+            ))}
+          </select>
+          <Button variant="outline" onClick={handleLogout} size="sm">
+            Logout
+          </Button>
+        </div>
       </div>
 
       {/* Chat messages */}
       <div 
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 max-w-3xl mx-auto w-full"
+        className="flex-1 overflow-y-auto p-4 space-y-4 max-w-5xl mx-auto w-full"
       >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full space-y-8">
             <h1 className="text-2xl font-semibold text-gray-700">How can I help you?</h1>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-5xl">
               {QUICK_LINKS.map((link) => (
                 <a
                   key={link.href}
@@ -334,11 +356,11 @@ export function Chat() {
               }`}
             >
               <div
-                className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                className={`${
                   message.role === 'user'
-                    ? 'bg-[#e7298a] text-white'
-                    : 'bg-gray-100 text-gray-900'
-                }`}
+                    ? 'bg-[#e7298a] text-white max-w-lg'
+                    : 'bg-gray-100 text-gray-900 max-w-4xl'
+                } rounded-lg px-4 py-2`}
               >
                 {/* Use the formatting function instead of direct text rendering */}
                 <div className="message-content">
@@ -403,7 +425,7 @@ export function Chat() {
         )}
         {isLoading && (
           <div className="flex justify-start">
-            <div className="max-w-[80%] rounded-lg bg-gray-100 px-4 py-2">
+            <div className="max-w-4xl rounded-lg bg-gray-100 px-4 py-2">
               <div className="flex space-x-2">
                 <div className="h-2 w-2 animate-bounce rounded-full bg-gray-400"></div>
                 <div className="h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: '0.2s' }}></div>
@@ -415,7 +437,7 @@ export function Chat() {
       </div>
 
       {/* Input form */}
-      <form onSubmit={handleSubmit} className="border-t p-4 max-w-3xl mx-auto w-full">
+      <form onSubmit={handleSubmit} className="border-t p-4 max-w-5xl mx-auto w-full">
         <div className="flex space-x-4">
           <Input
             value={input}
