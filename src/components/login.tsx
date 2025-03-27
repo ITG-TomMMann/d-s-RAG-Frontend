@@ -25,21 +25,54 @@ export function Login() {
       setIsLoading(true);
       const validatedData = loginSchema.parse(formData);
 
-      // For demo purposes, we'll simulate a successful login
-      // Replace this with actual API call in production
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      if (validatedData.email === 'demo@example.com' && validatedData.password === 'password123') {
-        const user = {
-          id: '1',
-          email: validatedData.email,
-          name: 'Demo User',
-        };
-        setAuth(user, 'demo-token');
-        navigate('/chat');
-      } else {
-        throw new Error('Invalid credentials');
+      // Create form data for OAuth2 compatibility with FastAPI
+      const formDataObj = new URLSearchParams();
+      formDataObj.append('username', validatedData.email); // FastAPI OAuth2 expects 'username'
+      formDataObj.append('password', validatedData.password);
+
+      // Call the FastAPI login endpoint
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formDataObj,
+      });
+
+      if (!response.ok) {
+        // Handle HTTP errors
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Login failed: ${response.statusText}`);
       }
+
+      // Parse the successful response
+      const data = await response.json();
+      
+      // Get user info using the token
+      const userResponse = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${data.access_token}`
+        }
+      });
+      
+      if (!userResponse.ok) {
+        throw new Error('Failed to get user information');
+      }
+      
+      const userData = await userResponse.json();
+      
+      // Store authentication data
+      setAuth(
+        {
+          id: userData.id,
+          email: userData.email || userData.username,
+          name: userData.username,
+        }, 
+        data.access_token
+      );
+      
+      // Navigate to the chat page after successful login
+      navigate('/chat');
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -64,7 +97,7 @@ export function Login() {
             Welcome to JLR Analysis
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Sign in to access your analysis dashboard
+            Sign in to the JLR Knowledge Base
           </p>
         </div>
 
